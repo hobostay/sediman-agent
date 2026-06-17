@@ -191,6 +191,13 @@ export class CronManager {
   }
 
   /**
+   * Update a job's last result and last-run timestamp
+   */
+  updateJobResult(jobId: string, result: string): boolean {
+    return this.repository.updateJobStatus(jobId, new Date(), result);
+  }
+
+  /**
    * Get a job by ID
    */
   getJob(jobId: string): StoredCronJob | null {
@@ -266,6 +273,18 @@ export class CronManager {
       scheduledTasks: this.scheduledTasks.size,
       repoStats
     };
+  }
+
+  /**
+   * Reload jobs from disk and reschedule enabled ones.
+   * Picks up jobs added, removed, or modified outside this process since startup.
+   */
+  reload(): void {
+    for (const jobId of Array.from(this.scheduledTasks.keys())) {
+      this.unscheduleTask(jobId);
+    }
+    this.loadScheduledTasks();
+    logger.info(`[CronManager] Reloaded jobs, ${this.scheduledTasks.size} scheduled`);
   }
 
   /**
@@ -369,6 +388,14 @@ export class CronScheduler {
     }
 
     logger.info('[CronScheduler] Stopped all tasks');
+  }
+
+  /**
+   * Reload persisted jobs from disk via the manager and reschedule them
+   */
+  reload(): void {
+    this.manager.reload();
+    logger.info('[CronScheduler] Reloaded jobs');
   }
 
   /**

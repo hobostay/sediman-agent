@@ -111,7 +111,15 @@ export class CronJobRepository {
    * Delete a job from storage
    */
   deleteJob(jobId: string): boolean {
-    const path = this.jobPath(jobId);
+    let path: string;
+    try {
+      path = this.jobPath(jobId);
+    } catch {
+      // Invalid or non-existent job ID — removing it is a no-op, not an error.
+      // Returning false keeps the boolean contract so API/RPC/CLI callers can
+      // report "not found" instead of crashing with an unhandled exception.
+      return false;
+    }
     if (!existsSync(path)) return false;
 
     try {
